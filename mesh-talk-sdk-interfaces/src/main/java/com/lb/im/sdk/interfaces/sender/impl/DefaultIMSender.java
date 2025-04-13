@@ -118,7 +118,7 @@ public class DefaultIMSender implements IMSender {
         int idx = 0;
         for (Map.Entry<String, IMUserInfo> entry : userTerminalGroup.entrySet()) {
             String serverIdStr = serverIdList.get(idx++);
-            if (StringUtils.isEmpty(serverIdStr)) {
+            if (!StringUtils.isEmpty(serverIdStr)) {
                 List<IMUserInfo> list = serverMap.computeIfAbsent(Integer.parseInt(serverIdStr), o -> new LinkedList<>());
                 list.add(entry.getValue());
             } else {
