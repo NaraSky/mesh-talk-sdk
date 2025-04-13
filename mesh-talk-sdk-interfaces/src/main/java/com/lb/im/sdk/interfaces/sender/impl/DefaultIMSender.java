@@ -185,4 +185,50 @@ public class DefaultIMSender implements IMSender {
         return map;
     }
 
+    @Override
+    /**
+     * 根据用户ID列表查询在线终端类型
+     * @param userIds 需要查询的用户ID列表
+     * @return 每个用户对应的在线终端类型列表，键为用户ID，值为终端类型列表
+     */
+    public Map<Long, List<IMDeviceType>> getOnlineTerminal(List<Long> userIds) {
+        if (CollectionUtil.isEmpty(userIds)) {
+            return Collections.emptyMap();
+        }
+
+        // 构建用户与终端类型的键值对，用于Redis查询
+        Map<String, IMUserInfo> userMap = new HashMap<>();
+        for (Long userId : userIds) {
+            for (Integer terminal : IMDeviceType.getAllCode()) {
+                String key = String.join(IMConstants.REDIS_KEY_SPLIT, IMConstants.IM_USER_SERVER_ID, userId.toString(), terminal.toString());
+                userMap.put(key, new IMUserInfo(userId, terminal));
+            }
+        }
+
+        // 从Redis批量获取数据
+        List<String> serverIdList = distributedCacheService.multiGet(userMap.keySet());
+        int idx = 0;
+        Map<Long, List<IMDeviceType>> onlineMap = new HashMap<>();
+        for (Map.Entry<String, IMUserInfo> entry : userMap.entrySet()) {
+            if (!StrUtil.isEmpty(serverIdList.get(idx++))) {
+                IMUserInfo imUserInfo = entry.getValue();
+                List<IMDeviceType> imTerminalTypeList = onlineMap.computeIfAbsent(imUserInfo.getUserId(), o -> new LinkedList<>());
+                imTerminalTypeList.add(IMDeviceType.getByCode(imUserInfo.getDeviceType()));
+            }
+        }
+        return onlineMap;
+    }
+
+
+    @Override
+    public Boolean isOnline(Long userId) {
+        String redisKey = String.join(IMConstants.REDIS_KEY_SPLIT, IMConstants.IM_USER_SERVER_ID, userId.toString(), "*");
+        Set<String> keys = distributedCacheService.keys(redisKey);
+        return !CollectionUtil.isEmpty(keys);
+    }
+
+    @Override
+    public List<Long> getOnlineUser(List<Long> userIds) {
+        return new LinkedList<>(this.getOnlineTerminal(userIds).keySet());
+    }
 }
