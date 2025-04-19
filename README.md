@@ -173,6 +173,38 @@ spring.redis.port=6379
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Message Diagram
+
+```mermaid
+sequenceDiagram
+    participant App as 应用程序
+    participant IMClient as DefaultIMClient
+    participant IMSender as DefaultIMSender
+    participant Redis as DistributedCacheService
+    participant RocketMQ as MessageSenderService
+    participant Consumer as MessageResultConsumer
+    participant Multicaster as DefaultMessageListenerMulticaster
+    participant Listener as MessageListener
+
+    App->>IMClient: sendPrivateMessage(message)
+    IMClient->>IMSender: sendPrivateMessage(message)
+    IMSender->>Redis: 查询目标用户服务器ID
+    Redis-->>IMSender: 返回服务器ID
+    alt 用户在线
+        IMSender->>RocketMQ: 发送消息到IM_MESSAGE_PRIVATE_QUEUE:serverId
+        IMSender->>Redis: 查询发送者其他终端服务器ID
+        Redis-->>IMSender: 返回服务器ID
+        IMSender->>RocketMQ: 同步消息到发送者其他终端
+    else 用户离线
+        IMSender->>Multicaster: multicast(PRIVATE_MESSAGE, IMSendResult(NOT_ONLINE))
+        Multicaster->>Listener: doProcess(IMSendResult)
+    end
+    RocketMQ->>Consumer: 消费IM_RESULT_PRIVATE_QUEUE消息
+    Consumer->>Consumer: 解析消息为IMSendResult
+    Consumer->>Multicaster: multicast(PRIVATE_MESSAGE, IMSendResult)
+    Multicaster->>Listener: doProcess(IMSendResult)
+```
+
 ---
 
 ⭐ Star us on GitHub if you find this project useful!
