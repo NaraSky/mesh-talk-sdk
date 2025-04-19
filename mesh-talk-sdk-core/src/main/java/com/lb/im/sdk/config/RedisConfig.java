@@ -7,7 +7,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-@Configuration("BH-IM-RedisConfig")
+@Configuration("Mesh-Talk-RedisConfig")
 public class RedisConfig {
 
     @Bean("IMRedisTemplate")
